@@ -34,9 +34,7 @@ type SignupInput struct {
 }
 
 type SignupOutput struct {
-	ID    uint   `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 type LoginInput struct {
@@ -85,10 +83,13 @@ func (s *authService) Signup(ctx context.Context, input SignupInput) (*SignupOut
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
+	token, err := s.jwtManager.GenerateToken(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("generate token: %w", err)
+	}
+
 	return &SignupOutput{
-		ID:    user.ID,
-		Name:  user.Name,
-		Email: user.Email,
+		Token: token,
 	}, nil
 }
 
