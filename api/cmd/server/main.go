@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/RintaroNasu/life-sim/api/internal/auth"
 	"github.com/RintaroNasu/life-sim/api/internal/db"
 	"github.com/RintaroNasu/life-sim/api/internal/handler"
+	"github.com/RintaroNasu/life-sim/api/internal/httpx"
+	"github.com/RintaroNasu/life-sim/api/internal/logging"
 	"github.com/RintaroNasu/life-sim/api/internal/repository"
 	"github.com/RintaroNasu/life-sim/api/internal/service"
 	"github.com/RintaroNasu/life-sim/api/route"
@@ -15,21 +18,29 @@ import (
 )
 
 func main() {
+	logger := logging.New()
+	slog.SetDefault(logger)
+
 	e := echo.New()
+	e.HideBanner = true
+	e.HTTPErrorHandler = httpx.HTTPErrorHandler(logger)
+	e.Use(httpx.RecoverMiddleware())
 
 	conn, err := db.New()
 	if err != nil {
-		e.Logger.Fatal("Failed to connect to database: ", err)
+		logger.Error("failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
 	defer func() {
 		if err := db.CloseDB(conn); err != nil {
-			e.Logger.Error("Failed to close database: ", err)
+			logger.Error("failed to close database", "error", err)
 		}
 	}()
 
 	if err := migrate.Migrate(conn); err != nil {
-		e.Logger.Fatal("Failed to migrate database: ", err)
+		logger.Error("failed to migrate database", "error", err)
+		os.Exit(1)
 	}
 
 	jwtManager := auth.NewJWTManager(getJWTSecret(), 24*time.Hour)
@@ -39,7 +50,11 @@ func main() {
 
 	route.Register(e, authHandler)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	logger.Info("server starting", "addr", ":8080")
+	if err := e.Start(":8080"); err != nil {
+		logger.Error("server stopped", "error", err)
+		os.Exit(1)
+	}
 }
 
 func getJWTSecret() string {

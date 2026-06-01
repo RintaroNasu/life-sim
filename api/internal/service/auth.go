@@ -23,8 +23,8 @@ var (
 )
 
 type AuthService interface {
-	Signup(ctx context.Context, input SignupInput) (*SignupOutput, error)
-	Login(ctx context.Context, input LoginInput) (*LoginOutput, error)
+	Signup(ctx context.Context, input SignupInput) (*AuthResponse, error)
+	Login(ctx context.Context, input LoginInput) (*AuthResponse, error)
 }
 
 type SignupInput struct {
@@ -33,16 +33,12 @@ type SignupInput struct {
 	Password string
 }
 
-type SignupOutput struct {
-	Token string `json:"token"`
-}
-
 type LoginInput struct {
 	Email    string
 	Password string
 }
 
-type LoginOutput struct {
+type AuthResponse struct {
 	Token string `json:"token"`
 }
 
@@ -58,7 +54,7 @@ func NewAuthService(repo repository.AuthRepository, jwtManager *auth.JWTManager)
 	}
 }
 
-func (s *authService) Signup(ctx context.Context, input SignupInput) (*SignupOutput, error) {
+func (s *authService) Signup(ctx context.Context, input SignupInput) (*AuthResponse, error) {
 	email, err := normalizeAndValidateCredentials(input.Email, input.Password)
 	if err != nil {
 		return nil, err
@@ -88,12 +84,12 @@ func (s *authService) Signup(ctx context.Context, input SignupInput) (*SignupOut
 		return nil, fmt.Errorf("generate token: %w", err)
 	}
 
-	return &SignupOutput{
+	return &AuthResponse{
 		Token: token,
 	}, nil
 }
 
-func (s *authService) Login(ctx context.Context, input LoginInput) (*LoginOutput, error) {
+func (s *authService) Login(ctx context.Context, input LoginInput) (*AuthResponse, error) {
 	email, err := normalizeAndValidateCredentials(input.Email, input.Password)
 	if err != nil {
 		return nil, err
@@ -121,7 +117,7 @@ func (s *authService) Login(ctx context.Context, input LoginInput) (*LoginOutput
 		return nil, fmt.Errorf("generate token: %w", err)
 	}
 
-	return &LoginOutput{
+	return &AuthResponse{
 		Token: token,
 	}, nil
 }
