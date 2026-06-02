@@ -47,8 +47,9 @@ func main() {
 	authRepository := repository.NewAuthRepository(conn)
 	authService := service.NewAuthService(authRepository, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
+	authMiddleware := auth.Middleware(jwtManager)
 
-	route.Register(e, authHandler)
+	route.Register(e, authHandler, authMiddleware)
 
 	logger.Info("server starting", "addr", ":8080")
 	if err := e.Start(":8080"); err != nil {

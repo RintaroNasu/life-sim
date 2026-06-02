@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -36,4 +38,38 @@ func (m *JWTManager) GenerateToken(userID uint) (string, error) {
 	}
 
 	return signedToken, nil
+}
+
+func (m *JWTManager) ParseToken(tokenString string) (uint, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
+		}
+
+		return m.secretKey, nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return 0, errors.New("token is invalid")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, errors.New("token claims are invalid")
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return 0, errors.New("sub claim is missing")
+	}
+
+	userID, err := strconv.ParseUint(sub, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse sub claim: %w", err)
+	}
+
+	return uint(userID), nil
 }

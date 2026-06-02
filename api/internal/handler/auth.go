@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 
+	"github.com/RintaroNasu/life-sim/api/internal/auth"
 	"github.com/RintaroNasu/life-sim/api/internal/httpx"
 	"github.com/RintaroNasu/life-sim/api/internal/service"
 	"github.com/labstack/echo"
@@ -11,6 +12,7 @@ import (
 type AuthHandler interface {
 	Signup(c echo.Context) error
 	Login(c echo.Context) error
+	Me(c echo.Context) error
 }
 
 type authHandler struct {
@@ -67,6 +69,20 @@ func (h *authHandler) Login(c echo.Context) error {
 	return c.JSON(200, result)
 }
 
+func (h *authHandler) Me(c echo.Context) error {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		return httpx.Unauthorized("authenticated user is required", errors.New("authenticated user is missing from context"))
+	}
+
+	result, err := h.authService.Me(c.Request().Context(), userID)
+	if err != nil {
+		return respondAuthError(err)
+	}
+
+	return c.JSON(200, result)
+}
+
 func respondAuthError(err error) error {
 	switch {
 	case errors.Is(err, service.ErrEmailRequired):
@@ -79,6 +95,8 @@ func respondAuthError(err error) error {
 		return httpx.Conflict("email already exists", err)
 	case errors.Is(err, service.ErrInvalidCredentials):
 		return httpx.Unauthorized("email or password is incorrect", err)
+	case errors.Is(err, service.ErrUserNotFound):
+		return httpx.Internal("internal server error", err)
 	default:
 		return httpx.Internal("internal server error", err)
 	}

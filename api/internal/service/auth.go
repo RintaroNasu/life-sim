@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/RintaroNasu/life-sim/api/internal/auth"
 	"github.com/RintaroNasu/life-sim/api/internal/models"
@@ -20,11 +21,13 @@ var (
 	ErrPasswordRequired   = errors.New("password is required")
 	ErrEmailAlreadyExists = errors.New("email already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 type AuthService interface {
 	Signup(ctx context.Context, input SignupInput) (*AuthResponse, error)
 	Login(ctx context.Context, input LoginInput) (*AuthResponse, error)
+	Me(ctx context.Context, userID uint) (*MeResponse, error)
 }
 
 type SignupInput struct {
@@ -40,6 +43,14 @@ type LoginInput struct {
 
 type AuthResponse struct {
 	Token string `json:"token"`
+}
+
+type MeResponse struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type authService struct {
@@ -119,6 +130,25 @@ func (s *authService) Login(ctx context.Context, input LoginInput) (*AuthRespons
 
 	return &AuthResponse{
 		Token: token,
+	}, nil
+}
+
+func (s *authService) Me(ctx context.Context, userID uint) (*MeResponse, error) {
+	user, err := s.repo.FindUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, fmt.Errorf("find user by id: %w", err)
+	}
+
+	return &MeResponse{
+		ID:        user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
 	}, nil
 }
 
