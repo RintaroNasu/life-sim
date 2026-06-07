@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/RintaroNasu/life-sim/api/internal/auth"
 	"github.com/RintaroNasu/life-sim/api/internal/models"
 	"github.com/RintaroNasu/life-sim/api/internal/repository"
 	"golang.org/x/crypto/bcrypt"
@@ -53,12 +52,16 @@ type MeResponse struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-type authService struct {
-	repo       repository.AuthRepository
-	jwtManager *auth.JWTManager
+type tokenGenerator interface {
+	GenerateToken(userID uint) (string, error)
 }
 
-func NewAuthService(repo repository.AuthRepository, jwtManager *auth.JWTManager) AuthService {
+type authService struct {
+	repo       repository.AuthRepository
+	jwtManager tokenGenerator
+}
+
+func NewAuthService(repo repository.AuthRepository, jwtManager tokenGenerator) AuthService {
 	return &authService{
 		repo:       repo,
 		jwtManager: jwtManager,
