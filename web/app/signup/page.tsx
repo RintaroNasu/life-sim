@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signup } from "@/lib/api/auth";
 import { SyntheticEvent, useState } from "react";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,12 +48,12 @@ export default function SignupPage() {
       });
 
       localStorage.setItem("token", data.token);
-      sessionStorage.removeItem("token");
 
       setSuccessMessage(
-        "新規登録に成功しました。次の画面実装後に遷移処理を追加します。",
+        "新規登録に成功しました。",
       );
       setPassword("");
+      router.push("/home");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);

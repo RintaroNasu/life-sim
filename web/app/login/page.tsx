@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { SyntheticEvent, useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +43,10 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
 
       setSuccessMessage(
-        "ログインに成功しました。次の画面実装後に遷移処理を追加します。",
+        "ログインに成功しました。",
       );
       setPassword("");
+      router.push("/home");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
