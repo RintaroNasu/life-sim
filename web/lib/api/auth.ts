@@ -13,6 +13,14 @@ export type LoginResponse = {
   token: string;
 };
 
+export type MeResponse = {
+  id: number;
+  name: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ApiErrorResponse = {
   error?: {
     code?: string;
@@ -41,6 +49,28 @@ export const login = async (
     throw new Error(
       data.error?.message ??
         "ログインに失敗しました。時間を置いて再度お試しください。",
+    );
+  }
+
+  return data;
+};
+
+export const me = async (
+  token: string,
+): Promise<MeResponse & ApiErrorResponse> => {
+  const response = await fetch(`${API_BASE_URL}/me`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = (await response.json()) as MeResponse & ApiErrorResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      data.error?.message ??
+        "ログイン状態を確認できませんでした。再度ログインしてください。",
     );
   }
 
