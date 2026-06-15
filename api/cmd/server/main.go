@@ -15,6 +15,7 @@ import (
 	"github.com/RintaroNasu/life-sim/api/internal/service"
 	"github.com/RintaroNasu/life-sim/api/route"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 func main() {
@@ -22,6 +23,11 @@ func main() {
 	slog.SetDefault(logger)
 
 	e := echo.New()
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:3000"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.OPTIONS},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+	}))
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpx.HTTPErrorHandler(logger)
 	e.Use(httpx.RecoverMiddleware())
@@ -43,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	jwtManager := auth.NewJWTManager(getJWTSecret(), 24*time.Hour)
+	jwtManager := auth.NewJWTManager(getJWTSecret(), 1*time.Minute)
 	authRepository := repository.NewAuthRepository(conn)
 	authService := service.NewAuthService(authRepository, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
