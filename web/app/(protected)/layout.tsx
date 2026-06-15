@@ -36,11 +36,10 @@ export default function ProtectedLayout({
 
         setUser(currentUser);
         setIsLoading(false);
-      } catch (error) {
+      } catch {
         if (!isActive) {
           return;
         }
-        console.error("failed to fetch current user", error);
         localStorage.removeItem("token");
         router.replace("/login");
       }
