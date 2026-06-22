@@ -49,9 +49,7 @@ export default function SignupPage() {
 
       localStorage.setItem("token", data.token);
 
-      setSuccessMessage(
-        "新規登録に成功しました。",
-      );
+      setSuccessMessage("新規登録に成功しました。");
       setPassword("");
       router.push("/home");
     } catch (error) {
@@ -187,7 +185,7 @@ export default function SignupPage() {
           <p className="mt-10 text-center text-base font-semibold text-slate-500">
             すでにアカウントをお持ちの方は
             <Link
-              href="/"
+              href="/login"
               className="ml-1 font-extrabold text-[#2563eb] hover:underline"
             >
               こちら
