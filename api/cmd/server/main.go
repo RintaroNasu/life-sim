@@ -49,13 +49,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	jwtManager := auth.NewJWTManager(getJWTSecret(), 1*time.Minute)
+	jwtManager := auth.NewJWTManager(getJWTSecret(), 1*time.Hour)
 	authRepository := repository.NewAuthRepository(conn)
 	authService := service.NewAuthService(authRepository, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
+	householdRepository := repository.NewHouseholdRepository(conn)
+	householdService := service.NewHouseholdService(householdRepository)
+	householdHandler := handler.NewHouseholdHandler(householdService)
 	authMiddleware := auth.Middleware(jwtManager)
 
-	route.Register(e, authHandler, authMiddleware)
+	route.Register(e, authHandler, householdHandler, authMiddleware)
 
 	logger.Info("server starting", "addr", ":8080")
 	if err := e.Start(":8080"); err != nil {

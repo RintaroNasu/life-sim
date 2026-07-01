@@ -5,8 +5,14 @@ import (
 	"github.com/labstack/echo"
 )
 
-func Register(e *echo.Echo, authHandler handler.AuthHandler, authMiddleware echo.MiddlewareFunc) {
+func Register(
+	e *echo.Echo,
+	authHandler handler.AuthHandler,
+	householdHandler handler.HouseholdHandler,
+	authMiddleware echo.MiddlewareFunc,
+) {
 	e.POST("/signup", authHandler.Signup)
 	e.POST("/login", authHandler.Login)
 	e.GET("/me", authHandler.Me, authMiddleware)
+	e.PUT("/households/:year/:month", householdHandler.Save, authMiddleware)
 }
