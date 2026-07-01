@@ -11,6 +11,7 @@ import (
 )
 
 type HouseholdHandler interface {
+	Get(c echo.Context) error
 	Save(c echo.Context) error
 }
 
@@ -34,20 +35,34 @@ func NewHouseholdHandler(householdService service.HouseholdService) HouseholdHan
 	return &householdHandler{householdService: householdService}
 }
 
+func (h *householdHandler) Get(c echo.Context) error {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		return httpx.Unauthorized("authenticated user is required", errors.New("authenticated user is missing from context"))
+	}
+
+	year, month, err := householdYearMonthFromParams(c)
+	if err != nil {
+		return err
+	}
+
+	result, err := h.householdService.GetHousehold(c.Request().Context(), userID, year, month)
+	if err != nil {
+		return respondHouseholdError(err)
+	}
+
+	return c.JSON(200, result)
+}
+
 func (h *householdHandler) Save(c echo.Context) error {
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok {
 		return httpx.Unauthorized("authenticated user is required", errors.New("authenticated user is missing from context"))
 	}
 
-	year, err := strconv.Atoi(c.Param("year"))
+	year, month, err := householdYearMonthFromParams(c)
 	if err != nil {
-		return httpx.InvalidRequest("year must be a valid integer", err)
-	}
-
-	month, err := strconv.Atoi(c.Param("month"))
-	if err != nil {
-		return httpx.InvalidRequest("month must be a valid integer", err)
+		return err
 	}
 
 	var req saveHouseholdRequest
@@ -81,9 +96,25 @@ func respondHouseholdError(err error) error {
 		return httpx.InvalidRequest("year is invalid", err)
 	case errors.Is(err, service.ErrInvalidMonth):
 		return httpx.InvalidRequest("month is invalid", err)
+	case errors.Is(err, service.ErrHouseholdNotFound):
+		return httpx.NotFound("household data was not found", err)
 	case errors.Is(err, service.ErrNegativeValue):
 		return httpx.InvalidRequest("amount must be greater than or equal to 0", err)
 	default:
 		return httpx.Internal("internal server error", err)
 	}
+}
+
+func householdYearMonthFromParams(c echo.Context) (int, int, error) {
+	year, err := strconv.Atoi(c.Param("year"))
+	if err != nil {
+		return 0, 0, httpx.InvalidRequest("year must be a valid integer", err)
+	}
+
+	month, err := strconv.Atoi(c.Param("month"))
+	if err != nil {
+		return 0, 0, httpx.InvalidRequest("month must be a valid integer", err)
+	}
+
+	return year, month, nil
 }

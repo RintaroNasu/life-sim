@@ -7,15 +7,18 @@ import (
 
 	"github.com/RintaroNasu/life-sim/api/internal/models"
 	"github.com/RintaroNasu/life-sim/api/internal/repository"
+	"gorm.io/gorm"
 )
 
 var (
-	ErrInvalidYear   = errors.New("invalid year")
-	ErrInvalidMonth  = errors.New("invalid month")
-	ErrNegativeValue = errors.New("amount must be greater than or equal to 0")
+	ErrInvalidYear       = errors.New("invalid year")
+	ErrInvalidMonth      = errors.New("invalid month")
+	ErrNegativeValue     = errors.New("amount must be greater than or equal to 0")
+	ErrHouseholdNotFound = errors.New("household not found")
 )
 
 type HouseholdService interface {
+	GetHousehold(ctx context.Context, userID uint, year int, month int) (*HouseholdResponse, error)
 	SaveHousehold(ctx context.Context, userID uint, input SaveHouseholdInput) (*HouseholdResponse, error)
 }
 
@@ -54,6 +57,40 @@ type householdService struct {
 
 func NewHouseholdService(repo repository.HouseholdRepository) HouseholdService {
 	return &householdService{repo: repo}
+}
+
+func (s *householdService) GetHousehold(ctx context.Context, userID uint, year int, month int) (*HouseholdResponse, error) {
+	if year < 1 {
+		return nil, ErrInvalidYear
+	}
+
+	if month < 1 || month > 12 {
+		return nil, ErrInvalidMonth
+	}
+
+	household, err := s.repo.FindHouseholdByUserAndMonth(ctx, userID, year, month)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrHouseholdNotFound
+		}
+
+		return nil, fmt.Errorf("find household by user and month: %w", err)
+	}
+
+	return &HouseholdResponse{
+		ID:              household.ID,
+		Year:            household.Year,
+		Month:           household.Month,
+		Income:          household.Income,
+		Rent:            household.Rent,
+		Food:            household.Food,
+		Savings:         household.Savings,
+		Transportation:  household.Transportation,
+		SocialExpense:   household.SocialExpense,
+		DailyGoods:      household.DailyGoods,
+		Utilities:       household.Utilities,
+		SubscriptionFee: household.SubscriptionFee,
+	}, nil
 }
 
 func (s *householdService) SaveHousehold(ctx context.Context, userID uint, input SaveHouseholdInput) (*HouseholdResponse, error) {

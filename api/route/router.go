@@ -14,5 +14,6 @@ func Register(
 	e.POST("/signup", authHandler.Signup)
 	e.POST("/login", authHandler.Login)
 	e.GET("/me", authHandler.Me, authMiddleware)
+	e.GET("/households/:year/:month", householdHandler.Get, authMiddleware)
 	e.PUT("/households/:year/:month", householdHandler.Save, authMiddleware)
 }
