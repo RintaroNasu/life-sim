@@ -18,11 +18,13 @@ import ProtectedLayout from "./layout";
 
 const replaceMock = vi.fn();
 const meMock = vi.fn();
+const pathnameMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     replace: replaceMock,
   }),
+  usePathname: () => pathnameMock(),
 }));
 
 vi.mock("next/link", () => ({
@@ -48,6 +50,8 @@ describe("ProtectedLayout", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     meMock.mockReset();
+    pathnameMock.mockReset();
+    pathnameMock.mockReturnValue("/home");
     localStorage.clear();
   });
 
