@@ -25,7 +25,7 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"http://localhost:3000"},
-		AllowMethods: []string{echo.GET, echo.POST, echo.OPTIONS},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.OPTIONS},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 	}))
 	e.HideBanner = true
@@ -54,11 +54,13 @@ func main() {
 	authService := service.NewAuthService(authRepository, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
 	householdRepository := repository.NewHouseholdRepository(conn)
+	dashboardService := service.NewDashboardService(householdRepository)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	householdService := service.NewHouseholdService(householdRepository)
 	householdHandler := handler.NewHouseholdHandler(householdService)
 	authMiddleware := auth.Middleware(jwtManager)
 
-	route.Register(e, authHandler, householdHandler, authMiddleware)
+	route.Register(e, authHandler, dashboardHandler, householdHandler, authMiddleware)
 
 	logger.Info("server starting", "addr", ":8080")
 	if err := e.Start(":8080"); err != nil {
