@@ -31,7 +31,7 @@ func main() {
 	e.HideBanner = true
 	e.HTTPErrorHandler = httpx.HTTPErrorHandler(logger)
 	e.Use(httpx.RecoverMiddleware())
-
+	// dbのインスタンス作成
 	conn, err := db.New()
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
