@@ -65,6 +65,7 @@ export default function ProtectedLayout({
   const navItems = [
     { href: "/home", label: "ダッシュボード" },
     { href: "/household", label: "家計入力" },
+    { href: "/simulation", label: "シミュレーション" },
   ];
 
   return (
