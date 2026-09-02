@@ -139,8 +139,14 @@ export default function SimulationPage() {
     isLoading,
     isNotFound,
     errorMessage,
+    saveErrorMessage,
+    saveSuccessMessage,
+    isSaving,
+    title,
     formValues,
+    handleTitleChange,
     handleAmountChange,
+    handleSave,
     summary,
     assetChartData,
   } = useSimulation();
@@ -210,6 +216,21 @@ export default function SimulationPage() {
               <h2 className="text-[1.6rem] font-extrabold tracking-[-0.03em] text-[#16245d]">
                 収支を調整
               </h2>
+              <div className="mt-8">
+                <label className="block">
+                  <span className="text-sm font-bold text-[#16245d]">
+                    シミュレーション名
+                  </span>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={handleTitleChange}
+                    placeholder="例: 固定費見直しプラン"
+                    className="mt-3 h-12 w-full rounded-[18px] border border-slate-200 bg-white px-4 text-sm font-semibold text-[#16245d] outline-none transition placeholder:text-slate-300 focus:border-[#2c6cff]"
+                  />
+                </label>
+              </div>
+
               <div className="mt-8 space-y-7">
                 {sliderFields.map((field) => (
                   <section
@@ -262,6 +283,28 @@ export default function SimulationPage() {
                   </section>
                 ))}
               </div>
+
+              <div className="mt-8">
+                {saveErrorMessage ? (
+                  <p className="mb-3 text-sm font-bold text-red-600">
+                    {saveErrorMessage}
+                  </p>
+                ) : null}
+                {saveSuccessMessage ? (
+                  <p className="mb-3 text-sm font-bold text-[#16a34a]">
+                    {saveSuccessMessage}
+                  </p>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="inline-flex h-13 w-full items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#2c6cff_0%,#2057e3_100%)] px-6 text-base font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? "保存中..." : "シミュレーションを保存"}
+                </button>
+              </div>
             </article>
 
             <article className="rounded-[28px] border border-slate-200/80 bg-white px-8 py-8 shadow-[0_24px_60px_rgba(37,99,235,0.06)]">
@@ -298,34 +341,6 @@ export default function SimulationPage() {
                   毎月の比較
                 </h3>
                 <div className="mt-5 space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-bold text-slate-400">
-                      月間支出合計
-                    </span>
-                    <span className="text-lg font-extrabold text-[#16245d]">
-                      ¥
-                      {currencyFormatter.format(
-                        summary.monthlyExpenses,
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-bold text-slate-400">
-                      シミュレーション後の月間自由額
-                    </span>
-                    <span
-                      className={`text-lg font-extrabold ${
-                        summary.monthlyFreeAmount < 0
-                          ? "text-[#e11d48]"
-                          : "text-[#2563eb]"
-                      }`}
-                    >
-                      ¥
-                      {currencyFormatter.format(
-                        summary.monthlyFreeAmount,
-                      )}
-                    </span>
-                  </div>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-sm font-bold text-slate-400">
                       現在の月間自由額

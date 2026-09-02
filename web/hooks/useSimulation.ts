@@ -6,6 +6,7 @@ import {
   type HouseholdApiError,
   type HouseholdFormValues,
 } from "@/lib/api/household";
+import { saveSimulation } from "@/lib/api/simulation";
 
 const EMPTY_SIMULATION_VALUES: HouseholdFormValues = {
   income: 0,
@@ -44,12 +45,16 @@ export const useSimulation = () => {
   const [{ year, month }] = useState(getCurrentYearMonth);
   const [baseValues, setBaseValues] =
     useState<HouseholdFormValues | null>(null);
+  const [title, setTitle] = useState("");
   const [formValues, setFormValues] = useState<HouseholdFormValues>(
     EMPTY_SIMULATION_VALUES,
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isNotFound, setIsNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [saveErrorMessage, setSaveErrorMessage] = useState("");
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -64,6 +69,8 @@ export const useSimulation = () => {
       setIsLoading(true);
       setIsNotFound(false);
       setErrorMessage("");
+      setSaveErrorMessage("");
+      setSaveSuccessMessage("");
 
       try {
         const data = await getHousehold(token, year, month);
@@ -121,6 +128,8 @@ export const useSimulation = () => {
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const numericValue = Number(event.target.value);
 
+      setSaveErrorMessage("");
+      setSaveSuccessMessage("");
       setFormValues((current) => ({
         ...current,
         [key]: Number.isNaN(numericValue)
@@ -128,6 +137,14 @@ export const useSimulation = () => {
           : Math.max(0, numericValue),
       }));
     };
+
+  const handleTitleChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setSaveErrorMessage("");
+    setSaveSuccessMessage("");
+    setTitle(event.target.value);
+  };
 
   const baseMonthlyExpenses = useMemo(
     () => (baseValues ? calculateMonthlyExpenses(baseValues) : 0),
@@ -210,6 +227,54 @@ export const useSimulation = () => {
 
   const monthLabel = `${year}年${month}月`;
 
+  const handleSave = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setSaveSuccessMessage("");
+      setSaveErrorMessage(
+        "ログイン情報を確認できませんでした。再度ログインしてください。",
+      );
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveErrorMessage("");
+    setSaveSuccessMessage("");
+
+    try {
+      await saveSimulation(token, {
+        title: title.trim(),
+        income: formValues.income,
+        rent: formValues.rent,
+        food: formValues.food,
+        transportation: formValues.transportation,
+        social_expense: formValues.social_expense,
+        daily_goods: formValues.daily_goods,
+        utilities: formValues.utilities,
+        subscription_fee: formValues.subscription_fee,
+        savings: formValues.savings,
+        monthly_expenses: monthlyExpenses,
+        monthly_free_amount: monthlyFreeAmount,
+        yearly_savings: yearlySavings,
+        yearly_free_amount: yearlyFreeAmount,
+        monthly_asset_increase: monthlyAssetIncrease,
+        yearly_asset_increase: yearlyAssetIncrease,
+        five_year_assets: fiveYearAssets,
+      });
+
+      setSaveSuccessMessage("シミュレーションを保存しました。");
+    } catch (error) {
+      setSaveErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "シミュレーションの保存に失敗しました。",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return {
     year,
     month,
@@ -217,8 +282,14 @@ export const useSimulation = () => {
     isLoading,
     isNotFound,
     errorMessage,
+    saveErrorMessage,
+    saveSuccessMessage,
+    isSaving,
+    title,
     formValues,
+    handleTitleChange,
     handleAmountChange,
+    handleSave,
     summary: {
       monthlyExpenses,
       monthlyFreeAmount,

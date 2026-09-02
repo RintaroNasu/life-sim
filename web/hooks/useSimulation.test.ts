@@ -8,13 +8,19 @@ import {
   vi,
 } from "vitest";
 import { getHousehold } from "@/lib/api/household";
+import { saveSimulation } from "@/lib/api/simulation";
 import { useSimulation } from "./useSimulation";
 
 vi.mock("@/lib/api/household", () => ({
   getHousehold: vi.fn(),
 }));
 
+vi.mock("@/lib/api/simulation", () => ({
+  saveSimulation: vi.fn(),
+}));
+
 const getHouseholdMock = vi.mocked(getHousehold);
+const saveSimulationMock = vi.mocked(saveSimulation);
 
 const flushEffects = async () => {
   await act(async () => {
@@ -29,6 +35,7 @@ describe("useSimulation", () => {
     localStorage.clear();
     localStorage.setItem("token", "test-token");
     getHouseholdMock.mockReset();
+    saveSimulationMock.mockReset();
   });
 
   afterEach(() => {
@@ -290,5 +297,238 @@ describe("useSimulation", () => {
     await flushEffects();
 
     expect(getHouseholdMock).not.toHaveBeenCalled();
+  });
+
+  it("【正常系】タイトル変更時にtitleが更新されること", async () => {
+    getHouseholdMock.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      month: 9,
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      savings: 30000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+    });
+
+    const { result } = renderHook(() => useSimulation());
+
+    await flushEffects();
+
+    act(() => {
+      result.current.handleTitleChange({
+        target: { value: "固定費見直しプラン" },
+      } as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(result.current.title).toBe("固定費見直しプラン");
+  });
+
+  it("【正常系】保存成功時にsaveSimulationが呼ばれて成功メッセージが表示されること", async () => {
+    getHouseholdMock.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      month: 9,
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      savings: 30000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+    });
+    saveSimulationMock.mockResolvedValue({
+      id: 1,
+      title: "固定費見直しプラン",
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+      savings: 30000,
+      monthly_expenses: 170000,
+      monthly_free_amount: 100000,
+      yearly_savings: 360000,
+      yearly_free_amount: 1200000,
+      monthly_asset_increase: 130000,
+      yearly_asset_increase: 1560000,
+      five_year_assets: 7800000,
+      created_at: "2026-09-03T00:00:00Z",
+      updated_at: "2026-09-03T00:00:00Z",
+    });
+
+    const { result } = renderHook(() => useSimulation());
+
+    await flushEffects();
+
+    act(() => {
+      result.current.handleTitleChange({
+        target: { value: "  固定費見直しプラン  " },
+      } as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+
+    expect(saveSimulationMock).toHaveBeenCalledWith("test-token", {
+      title: "固定費見直しプラン",
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+      savings: 30000,
+      monthly_expenses: 170000,
+      monthly_free_amount: 100000,
+      yearly_savings: 360000,
+      yearly_free_amount: 1200000,
+      monthly_asset_increase: 130000,
+      yearly_asset_increase: 1560000,
+      five_year_assets: 7800000,
+    });
+    expect(result.current.saveSuccessMessage).toBe(
+      "シミュレーションを保存しました。",
+    );
+    expect(result.current.saveErrorMessage).toBe("");
+    expect(result.current.isSaving).toBe(false);
+  });
+
+  it("【異常系】保存失敗時にerrorMessageがセットされること", async () => {
+    getHouseholdMock.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      month: 9,
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      savings: 30000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+    });
+    saveSimulationMock.mockRejectedValue(
+      new Error("シミュレーションの保存に失敗しました。"),
+    );
+
+    const { result } = renderHook(() => useSimulation());
+
+    await flushEffects();
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+
+    expect(result.current.saveErrorMessage).toBe(
+      "シミュレーションの保存に失敗しました。",
+    );
+    expect(result.current.saveSuccessMessage).toBe("");
+    expect(result.current.isSaving).toBe(false);
+  });
+
+  it("【異常系】tokenがない場合に保存処理を呼ばずエラーメッセージを表示すること", async () => {
+    getHouseholdMock.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      month: 9,
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      savings: 30000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+    });
+
+    const { result } = renderHook(() => useSimulation());
+
+    await flushEffects();
+    localStorage.removeItem("token");
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+
+    expect(saveSimulationMock).not.toHaveBeenCalled();
+    expect(result.current.saveErrorMessage).toBe(
+      "ログイン情報を確認できませんでした。再度ログインしてください。",
+    );
+    expect(result.current.saveSuccessMessage).toBe("");
+  });
+
+  it("【回帰】タイトル変更時に保存メッセージがクリアされること", async () => {
+    getHouseholdMock.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      month: 9,
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      savings: 30000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+    });
+    saveSimulationMock.mockResolvedValue({
+      id: 1,
+      title: "固定費見直しプラン",
+      income: 300000,
+      rent: 90000,
+      food: 40000,
+      transportation: 10000,
+      social_expense: 5000,
+      daily_goods: 10000,
+      utilities: 10000,
+      subscription_fee: 5000,
+      savings: 30000,
+      monthly_expenses: 170000,
+      monthly_free_amount: 100000,
+      yearly_savings: 360000,
+      yearly_free_amount: 1200000,
+      monthly_asset_increase: 130000,
+      yearly_asset_increase: 1560000,
+      five_year_assets: 7800000,
+      created_at: "2026-09-03T00:00:00Z",
+      updated_at: "2026-09-03T00:00:00Z",
+    });
+
+    const { result } = renderHook(() => useSimulation());
+
+    await flushEffects();
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+
+    expect(result.current.saveSuccessMessage).toBe(
+      "シミュレーションを保存しました。",
+    );
+
+    act(() => {
+      result.current.handleTitleChange({
+        target: { value: "新しいタイトル" },
+      } as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(result.current.saveSuccessMessage).toBe("");
+    expect(result.current.saveErrorMessage).toBe("");
   });
 });
