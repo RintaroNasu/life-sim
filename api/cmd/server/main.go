@@ -58,9 +58,12 @@ func main() {
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	householdService := service.NewHouseholdService(householdRepository)
 	householdHandler := handler.NewHouseholdHandler(householdService)
+	simulationRepository := repository.NewSimulationRepository(conn)
+	simulationService := service.NewSimulationService(simulationRepository)
+	simulationHandler := handler.NewSimulationHandler(simulationService)
 	authMiddleware := auth.Middleware(jwtManager)
 
-	route.Register(e, authHandler, dashboardHandler, householdHandler, authMiddleware)
+	route.Register(e, authHandler, dashboardHandler, householdHandler, simulationHandler, authMiddleware)
 
 	logger.Info("server starting", "addr", ":8080")
 	if err := e.Start(":8080"); err != nil {

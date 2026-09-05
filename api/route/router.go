@@ -10,6 +10,7 @@ func Register(
 	authHandler handler.AuthHandler,
 	dashboardHandler handler.DashboardHandler,
 	householdHandler handler.HouseholdHandler,
+	simulationHandler handler.SimulationHandler,
 	authMiddleware echo.MiddlewareFunc,
 ) {
 	e.POST("/signup", authHandler.Signup)
@@ -18,4 +19,5 @@ func Register(
 	e.GET("/dashboard", dashboardHandler.Get, authMiddleware)
 	e.GET("/households/:year/:month", householdHandler.Get, authMiddleware)
 	e.PUT("/households/:year/:month", householdHandler.Save, authMiddleware)
+	e.POST("/simulations", simulationHandler.Save, authMiddleware)
 }
