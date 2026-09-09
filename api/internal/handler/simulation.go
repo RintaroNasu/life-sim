@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/RintaroNasu/life-sim/api/internal/auth"
 	"github.com/RintaroNasu/life-sim/api/internal/httpx"
@@ -12,6 +13,8 @@ import (
 
 type SimulationHandler interface {
 	Save(c echo.Context) error
+	GetList(c echo.Context) error
+	GetDetail(c echo.Context) error
 }
 
 type simulationHandler struct {
@@ -40,6 +43,42 @@ type saveSimulationRequest struct {
 
 func NewSimulationHandler(simulationService service.SimulationService) SimulationHandler {
 	return &simulationHandler{simulationService: simulationService}
+}
+
+func (h *simulationHandler) GetList(c echo.Context) error {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		return httpx.Unauthorized("authenticated user is required", errors.New("authenticated user is missing from context"))
+	}
+
+	result, err := h.simulationService.GetSimulations(c.Request().Context(), userID)
+	if err != nil {
+		return respondSimulationError(err)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
+func (h *simulationHandler) GetDetail(c echo.Context) error {
+	userID, ok := auth.UserIDFromContext(c)
+	if !ok {
+		return httpx.Unauthorized("authenticated user is required", errors.New("authenticated user is missing from context"))
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return httpx.InvalidRequest("simulation id must be a valid integer", err)
+	}
+	if id < 1 {
+		return httpx.InvalidRequest("simulation id is invalid", errors.New("simulation id must be greater than 0"))
+	}
+
+	result, err := h.simulationService.GetSimulation(c.Request().Context(), userID, uint(id))
+	if err != nil {
+		return respondSimulationError(err)
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *simulationHandler) Save(c echo.Context) error {
@@ -83,6 +122,8 @@ func respondSimulationError(err error) error {
 	switch {
 	case errors.Is(err, service.ErrSimulationNegativeValue):
 		return httpx.InvalidRequest("amount must be greater than or equal to 0", err)
+	case errors.Is(err, service.ErrSimulationNotFound):
+		return httpx.NotFound("simulation was not found", err)
 	default:
 		return httpx.Internal("internal server error", err)
 	}

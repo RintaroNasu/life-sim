@@ -19,5 +19,7 @@ func Register(
 	e.GET("/dashboard", dashboardHandler.Get, authMiddleware)
 	e.GET("/households/:year/:month", householdHandler.Get, authMiddleware)
 	e.PUT("/households/:year/:month", householdHandler.Save, authMiddleware)
+	e.GET("/simulations", simulationHandler.GetList, authMiddleware)
+	e.GET("/simulations/:id", simulationHandler.GetDetail, authMiddleware)
 	e.POST("/simulations", simulationHandler.Save, authMiddleware)
 }
