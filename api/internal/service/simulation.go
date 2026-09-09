@@ -8,12 +8,18 @@ import (
 
 	"github.com/RintaroNasu/life-sim/api/internal/models"
 	"github.com/RintaroNasu/life-sim/api/internal/repository"
+	"gorm.io/gorm"
 )
 
-var ErrSimulationNegativeValue = errors.New("amount must be greater than or equal to 0")
+var (
+	ErrSimulationNegativeValue = errors.New("amount must be greater than or equal to 0")
+	ErrSimulationNotFound      = errors.New("simulation not found")
+)
 
 type SimulationService interface {
 	SaveSimulation(ctx context.Context, userID uint, input SaveSimulationInput) (*SimulationResponse, error)
+	GetSimulations(ctx context.Context, userID uint) ([]SimulationListItemResponse, error)
+	GetSimulation(ctx context.Context, userID uint, id uint) (*SimulationResponse, error)
 }
 
 type SaveSimulationInput struct {
@@ -59,12 +65,76 @@ type SimulationResponse struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
+type SimulationListItemResponse struct {
+	ID                uint      `json:"id"`
+	Title             string    `json:"title"`
+	MonthlyFreeAmount int       `json:"monthly_free_amount"`
+	YearlySavings     int       `json:"yearly_savings"`
+	FiveYearAssets    int       `json:"five_year_assets"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
 type simulationService struct {
 	repo repository.SimulationRepository
 }
 
 func NewSimulationService(repo repository.SimulationRepository) SimulationService {
 	return &simulationService{repo: repo}
+}
+
+func (s *simulationService) GetSimulations(ctx context.Context, userID uint) ([]SimulationListItemResponse, error) {
+	simulations, err := s.repo.FindSimulationsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("find simulations by user: %w", err)
+	}
+
+	result := make([]SimulationListItemResponse, 0, len(simulations))
+	for _, simulation := range simulations {
+		result = append(result, SimulationListItemResponse{
+			ID:                simulation.ID,
+			Title:             simulation.Title,
+			MonthlyFreeAmount: simulation.MonthlyFreeAmount,
+			YearlySavings:     simulation.YearlySavings,
+			FiveYearAssets:    simulation.FiveYearAssets,
+			CreatedAt:         simulation.CreatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+func (s *simulationService) GetSimulation(ctx context.Context, userID uint, id uint) (*SimulationResponse, error) {
+	simulation, err := s.repo.FindSimulationByUserAndID(ctx, userID, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSimulationNotFound
+		}
+
+		return nil, fmt.Errorf("find simulation by user and id: %w", err)
+	}
+
+	return &SimulationResponse{
+		ID:                   simulation.ID,
+		Title:                simulation.Title,
+		Income:               simulation.Income,
+		Rent:                 simulation.Rent,
+		Food:                 simulation.Food,
+		Transportation:       simulation.Transportation,
+		SocialExpense:        simulation.SocialExpense,
+		DailyGoods:           simulation.DailyGoods,
+		Utilities:            simulation.Utilities,
+		SubscriptionFee:      simulation.SubscriptionFee,
+		Savings:              simulation.Savings,
+		MonthlyExpenses:      simulation.MonthlyExpenses,
+		MonthlyFreeAmount:    simulation.MonthlyFreeAmount,
+		YearlySavings:        simulation.YearlySavings,
+		YearlyFreeAmount:     simulation.YearlyFreeAmount,
+		MonthlyAssetIncrease: simulation.MonthlyAssetIncrease,
+		YearlyAssetIncrease:  simulation.YearlyAssetIncrease,
+		FiveYearAssets:       simulation.FiveYearAssets,
+		CreatedAt:            simulation.CreatedAt,
+		UpdatedAt:            simulation.UpdatedAt,
+	}, nil
 }
 
 func (s *simulationService) SaveSimulation(ctx context.Context, userID uint, input SaveSimulationInput) (*SimulationResponse, error) {

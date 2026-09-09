@@ -8,10 +8,13 @@ import (
 
 	"github.com/RintaroNasu/life-sim/api/internal/models"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 type fakeSimulationRepo struct {
-	createFunc func(ctx context.Context, simulation *models.Simulation) error
+	createFunc  func(ctx context.Context, simulation *models.Simulation) error
+	findAllFunc func(ctx context.Context, userID uint) ([]models.Simulation, error)
+	findFunc    func(ctx context.Context, userID uint, id uint) (*models.Simulation, error)
 }
 
 func (f *fakeSimulationRepo) CreateSimulation(ctx context.Context, simulation *models.Simulation) error {
@@ -20,6 +23,215 @@ func (f *fakeSimulationRepo) CreateSimulation(ctx context.Context, simulation *m
 	}
 
 	return f.createFunc(ctx, simulation)
+}
+
+func (f *fakeSimulationRepo) FindSimulationsByUser(ctx context.Context, userID uint) ([]models.Simulation, error) {
+	if f.findAllFunc == nil {
+		return nil, nil
+	}
+
+	return f.findAllFunc(ctx, userID)
+}
+
+func (f *fakeSimulationRepo) FindSimulationByUserAndID(ctx context.Context, userID uint, id uint) (*models.Simulation, error) {
+	if f.findFunc == nil {
+		return nil, nil
+	}
+
+	return f.findFunc(ctx, userID, id)
+}
+
+func TestSimulationService_GetSimulations(t *testing.T) {
+	now := time.Date(2026, 9, 9, 10, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		userID      uint
+		repo        fakeSimulationRepo
+		want        []SimulationListItemResponse
+		errContains string
+	}{
+		{
+			name:   "【正常系】保存済みシミュレーション一覧を取得できること",
+			userID: 1,
+			repo: fakeSimulationRepo{
+				findAllFunc: func(ctx context.Context, userID uint) ([]models.Simulation, error) {
+					require.Equal(t, uint(1), userID)
+					return []models.Simulation{
+						{
+							ID:                2,
+							Title:             "食費見直し",
+							MonthlyFreeAmount: 100000,
+							YearlySavings:     360000,
+							FiveYearAssets:    7800000,
+							CreatedAt:         now,
+						},
+					}, nil
+				},
+			},
+			want: []SimulationListItemResponse{
+				{
+					ID:                2,
+					Title:             "食費見直し",
+					MonthlyFreeAmount: 100000,
+					YearlySavings:     360000,
+					FiveYearAssets:    7800000,
+					CreatedAt:         now,
+				},
+			},
+		},
+		{
+			name:   "【正常系】保存済みシミュレーションが0件の場合は空配列を返すこと",
+			userID: 1,
+			repo: fakeSimulationRepo{
+				findAllFunc: func(ctx context.Context, userID uint) ([]models.Simulation, error) {
+					return []models.Simulation{}, nil
+				},
+			},
+			want: []SimulationListItemResponse{},
+		},
+		{
+			name:   "【異常系】DB検索失敗時は find simulations by user エラーになること",
+			userID: 1,
+			repo: fakeSimulationRepo{
+				findAllFunc: func(ctx context.Context, userID uint) ([]models.Simulation, error) {
+					return nil, errors.New("select failed")
+				},
+			},
+			errContains: "find simulations by user",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewSimulationService(&tt.repo)
+			got, err := svc.GetSimulations(context.Background(), tt.userID)
+
+			if tt.errContains != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errContains)
+				require.Nil(t, got)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestSimulationService_GetSimulation(t *testing.T) {
+	now := time.Date(2026, 9, 9, 11, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		userID      uint
+		id          uint
+		repo        fakeSimulationRepo
+		want        *SimulationResponse
+		wantErr     error
+		errContains string
+	}{
+		{
+			name:   "【正常系】指定したシミュレーション詳細を取得できること",
+			userID: 1,
+			id:     10,
+			repo: fakeSimulationRepo{
+				findFunc: func(ctx context.Context, userID uint, id uint) (*models.Simulation, error) {
+					require.Equal(t, uint(1), userID)
+					require.Equal(t, uint(10), id)
+					return &models.Simulation{
+						ID:                   10,
+						Title:                "固定費見直し",
+						Income:               290000,
+						Rent:                 90000,
+						Food:                 50000,
+						Transportation:       10000,
+						SocialExpense:        20000,
+						DailyGoods:           10000,
+						Utilities:            15000,
+						SubscriptionFee:      5000,
+						Savings:              30000,
+						MonthlyExpenses:      200000,
+						MonthlyFreeAmount:    60000,
+						YearlySavings:        360000,
+						YearlyFreeAmount:     720000,
+						MonthlyAssetIncrease: 90000,
+						YearlyAssetIncrease:  1080000,
+						FiveYearAssets:       5400000,
+						CreatedAt:            now,
+						UpdatedAt:            now,
+					}, nil
+				},
+			},
+			want: &SimulationResponse{
+				ID:                   10,
+				Title:                "固定費見直し",
+				Income:               290000,
+				Rent:                 90000,
+				Food:                 50000,
+				Transportation:       10000,
+				SocialExpense:        20000,
+				DailyGoods:           10000,
+				Utilities:            15000,
+				SubscriptionFee:      5000,
+				Savings:              30000,
+				MonthlyExpenses:      200000,
+				MonthlyFreeAmount:    60000,
+				YearlySavings:        360000,
+				YearlyFreeAmount:     720000,
+				MonthlyAssetIncrease: 90000,
+				YearlyAssetIncrease:  1080000,
+				FiveYearAssets:       5400000,
+				CreatedAt:            now,
+				UpdatedAt:            now,
+			},
+		},
+		{
+			name:   "【異常系】対象データがない場合は ErrSimulationNotFound を返すこと",
+			userID: 1,
+			id:     999,
+			repo: fakeSimulationRepo{
+				findFunc: func(ctx context.Context, userID uint, id uint) (*models.Simulation, error) {
+					return nil, gorm.ErrRecordNotFound
+				},
+			},
+			wantErr: ErrSimulationNotFound,
+		},
+		{
+			name:   "【異常系】DB検索失敗時は find simulation by user and id エラーになること",
+			userID: 1,
+			id:     10,
+			repo: fakeSimulationRepo{
+				findFunc: func(ctx context.Context, userID uint, id uint) (*models.Simulation, error) {
+					return nil, errors.New("select failed")
+				},
+			},
+			errContains: "find simulation by user and id",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewSimulationService(&tt.repo)
+			got, err := svc.GetSimulation(context.Background(), tt.userID, tt.id)
+
+			switch {
+			case tt.wantErr != nil:
+				require.ErrorIs(t, err, tt.wantErr)
+				require.Nil(t, got)
+			case tt.errContains != "":
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errContains)
+				require.Nil(t, got)
+			default:
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
 
 func TestSimulationService_SaveSimulation(t *testing.T) {
