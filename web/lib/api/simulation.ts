@@ -24,6 +24,15 @@ export type SimulationResponse = SaveSimulationRequest & {
   updated_at: string;
 };
 
+export type SimulationListItemResponse = {
+  id: number;
+  title: string;
+  monthly_free_amount: number;
+  yearly_savings: number;
+  five_year_assets: number;
+  created_at: string;
+};
+
 type SimulationErrorResponse = {
   error?: {
     message?: string;
@@ -73,6 +82,61 @@ export const saveSimulation = async (
         ? (data.error?.message ??
             "シミュレーションの保存に失敗しました。")
         : "シミュレーションの保存に失敗しました。",
+      response.status,
+    );
+  }
+
+  return data as SimulationResponse;
+};
+
+export const getSimulations = async (
+  token: string,
+): Promise<SimulationListItemResponse[]> => {
+  const response = await fetch(`${API_BASE_URL}/simulations`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = (await response.json()) as
+    | SimulationListItemResponse[]
+    | SimulationErrorResponse;
+
+  if (!response.ok) {
+    throw buildApiError(
+      "error" in data
+        ? (data.error?.message ??
+            "シミュレーション一覧の取得に失敗しました。")
+        : "シミュレーション一覧の取得に失敗しました。",
+      response.status,
+    );
+  }
+
+  return data as SimulationListItemResponse[];
+};
+
+export const getSimulationDetail = async (
+  token: string,
+  id: number,
+): Promise<SimulationResponse> => {
+  const response = await fetch(`${API_BASE_URL}/simulations/${id}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = (await response.json()) as
+    | SimulationResponse
+    | SimulationErrorResponse;
+
+  if (!response.ok) {
+    throw buildApiError(
+      "error" in data
+        ? (data.error?.message ??
+            "シミュレーション詳細の取得に失敗しました。")
+        : "シミュレーション詳細の取得に失敗しました。",
       response.status,
     );
   }
