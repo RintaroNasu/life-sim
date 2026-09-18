@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { Pie, PieChart, ResponsiveContainer } from "recharts";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useSimulations } from "@/hooks/useSimulations";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP");
+const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
 
 const summaryCards = [
   {
@@ -40,6 +46,11 @@ export default function HomePage() {
     chartSegments,
     spendRate,
   } = useDashboard();
+  const {
+    simulations,
+    isLoading: isSimulationsLoading,
+    errorMessage: simulationsErrorMessage,
+  } = useSimulations();
 
   const summaryValues = {
     income: dashboard?.income ?? 0,
@@ -241,6 +252,120 @@ export default function HomePage() {
               </p>
             </article>
           </div>
+
+          <article className="rounded-[28px] border border-slate-200/80 bg-white px-8 py-8 shadow-[0_24px_60px_rgba(37,99,235,0.06)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-[1.6rem] font-extrabold tracking-[-0.03em] text-[#16245d]">
+                  保存したシミュレーション
+                </h2>
+                <p className="mt-2 text-base font-semibold text-slate-400">
+                  作成したシミュレーションを確認できます
+                </p>
+              </div>
+
+              <Link
+                href="/simulation"
+                className="inline-flex h-12 items-center justify-center rounded-[16px] bg-[linear-gradient(180deg,#2c6cff_0%,#2057e3_100%)] px-5 text-sm font-extrabold text-white transition hover:brightness-110"
+              >
+                新しく作成する
+              </Link>
+            </div>
+
+            {isSimulationsLoading ? (
+              <p className="mt-8 text-base font-semibold text-slate-400">
+                シミュレーション一覧を読み込んでいます...
+              </p>
+            ) : null}
+
+            {!isSimulationsLoading && simulationsErrorMessage ? (
+              <div className="mt-8 rounded-[20px] border border-red-200 bg-red-50 px-5 py-4">
+                <p className="text-sm font-bold text-red-600">
+                  {simulationsErrorMessage}
+                </p>
+              </div>
+            ) : null}
+
+            {!isSimulationsLoading &&
+            !simulationsErrorMessage &&
+            simulations.length === 0 ? (
+              <div className="mt-8 rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
+                <p className="text-base font-bold text-[#16245d]">
+                  保存済みのシミュレーションはまだありません
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-400">
+                  シミュレーションを作成して保存すると、ここに表示されます。
+                </p>
+              </div>
+            ) : null}
+
+            {!isSimulationsLoading &&
+            !simulationsErrorMessage &&
+            simulations.length > 0 ? (
+              <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                {simulations.map((simulation) => (
+                  <Link
+                    key={simulation.id}
+                    href={`/simulations/${simulation.id}`}
+                    className="group rounded-[24px] border border-slate-200/80 bg-white px-6 py-6 shadow-[0_20px_50px_rgba(37,99,235,0.05)] transition hover:-translate-y-0.5 hover:border-[#2c6cff]/40 hover:shadow-[0_24px_60px_rgba(37,99,235,0.12)]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg font-extrabold text-[#16245d] transition group-hover:text-[#2563eb]">
+                          {simulation.title ||
+                            "無題のシミュレーション"}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-slate-400">
+                          {dateFormatter.format(
+                            new Date(simulation.created_at),
+                          )}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#edf3ff] px-3 py-1 text-xs font-extrabold text-[#2563eb]">
+                        詳細
+                      </span>
+                    </div>
+
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-400">
+                          月間自由額
+                        </span>
+                        <span className="text-base font-extrabold text-[#16245d]">
+                          ¥
+                          {currencyFormatter.format(
+                            simulation.monthly_free_amount,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-400">
+                          年間貯金額
+                        </span>
+                        <span className="text-base font-extrabold text-[#16245d]">
+                          ¥
+                          {currencyFormatter.format(
+                            simulation.yearly_savings,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-400">
+                          5年後の累計資産
+                        </span>
+                        <span className="text-base font-extrabold text-[#2563eb]">
+                          ¥
+                          {currencyFormatter.format(
+                            simulation.five_year_assets,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </article>
         </>
       ) : null}
     </section>
