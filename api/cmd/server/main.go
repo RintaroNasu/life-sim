@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/RintaroNasu/life-sim/api/cmd/migrate"
@@ -14,17 +15,19 @@ import (
 	"github.com/RintaroNasu/life-sim/api/internal/repository"
 	"github.com/RintaroNasu/life-sim/api/internal/service"
 	"github.com/RintaroNasu/life-sim/api/route"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
 
 func main() {
+	_ = godotenv.Load()
 	logger := logging.New()
 	slog.SetDefault(logger)
 
 	e := echo.New()
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000"},
+		AllowOrigins: getCORSAllowedOrigins(),
 		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.OPTIONS},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 	}))
@@ -70,6 +73,19 @@ func main() {
 		logger.Error("server stopped", "error", err)
 		os.Exit(1)
 	}
+}
+
+func getCORSAllowedOrigins() []string {
+	var origins []string
+	for _, origin := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
+		if origin = strings.TrimSpace(origin); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	if len(origins) == 0 {
+		return []string{"http://localhost:3000"}
+	}
+	return origins
 }
 
 func getJWTSecret() string {
