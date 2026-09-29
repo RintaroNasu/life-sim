@@ -1,2 +1,6 @@
 # Go
 api/.env
+
+# Production secrets
+.env.prod
+.env.prod.*
